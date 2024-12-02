@@ -23,4 +23,4 @@ Recommended Parameters to use for the first deployment
 | PrivateSubnetsCIDR | 10.0.0.0/24, 10.0.1.0/24 |
 | PublicSubnetsCIDR  | 10.0.2.0/24, 10.0.3.0/24 |
 | Role               | LabRole                  |
-| VpcCIDR            | 9.0.0.0/16              |
+| VpcCIDR            | 10.0.0.0/16              |

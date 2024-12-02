@@ -230,18 +230,6 @@ Resources:
       Tags:
         - Key: "Name"
           Value: "platform-pubic-access"
-   
-# AppLoadBalancer:
-#   Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-#   Properties:
-#     Name: public-platform-app-lb
-#     Scheme: internet-facing
-#     Subnets:
-#       - !Ref PublicSubnetOne
-#       - !Ref PublicSubnetTwo
-#     Type: application
-#     SecurityGroups:
-#       - !GetAtt PublicSecurityGroup.GroupId
 
   # Public accessible regional API endpoint
   RegionalAPIGateway:
@@ -267,3 +255,29 @@ Resources:
         Role: !Ref Role
         RegionalAPIGatewayId: !Ref RegionalAPIGateway
         RegionalAPIGatewayRootId: !GetAtt RegionalAPIGateway.RootResourceId
+
+  ClusterDedicated:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/platform-infrastructure-on-aws-cf-${OWNER}/clusters/ecs-dedicated-cluster-cf.yaml
+      Parameters:
+        ClusterName: dedicated-cluster
+        VpcId: !Ref VPC
+        SubnetIds: !Join
+          - ','
+          - - !Ref PrivateSubnetOne
+            - !Ref PrivateSubnetTwo
+        Role: !Ref Role
+        RegionalAPIGatewayId: !Ref RegionalAPIGateway
+        RegionalAPIGatewayRootId: !GetAtt RegionalAPIGateway.RootResourceId
+
+  # API gateway deployments
+  BaseDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref RegionalAPIGateway
+      Description: Base initial deployment
+      StageName: Base
+    DependsOn: 
+      - ClusterShared
+      - ClusterDedicated

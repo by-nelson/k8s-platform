@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >
-  Deploys a ECS cluster to the platform infrastructure.
+  Deploys a dedicated ECS cluster to the platform infrastructure.
 
 Parameters:
   ClusterName:
@@ -23,7 +23,6 @@ Parameters:
   RegionalAPIGatewayRootId:
     Type: String
     Description: ID of root resource for the public Regional API Gateway
-
 
 Resources:
 
@@ -61,7 +60,7 @@ Resources:
   InternalLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: private-platform-network-lb
+      Name: !Sub lb-$${q}{ClusterName}
       Scheme: internal
       Subnets:
         - !Select [ 0, !Ref SubnetIds]
@@ -75,7 +74,7 @@ Resources:
   InternalLink:
     Type: AWS::ApiGateway::VpcLink
     Properties:
-      Name: api-private-link-to-vpc
+      Name: !Sub api-private-link-to-vpc-$${q}{ClusterName}
       TargetArns:
         - !Ref InternalLoadBalancer
 
@@ -100,7 +99,7 @@ Resources:
   TestAPIDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: test-api-task-def
+      Family: !Sub test-api-task-def-$${q}{ClusterName}
       ContainerDefinitions:
         - Name: test-api
           Image: docker.io/vanapagan/test-rest-api:latest
@@ -126,7 +125,7 @@ Resources:
   TestAPITargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: ecs-test-api-service-nlb
+      Name: !Sub service-nlb-$${q}{ClusterName}
       Port: 8080
       Protocol: TCP
       TargetType: ip
@@ -175,26 +174,49 @@ Resources:
       - TestAPIListener
 
   ## API Resource
-  TestAPIResourceAbout:
+  TestAPIResourceTest:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref RegionalAPIGatewayId
       ParentId: !Ref ClusterResourceRoot
-      PathPart: about
+      PathPart: test
+
+  TestAPIResourceHostname:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RegionalAPIGatewayId
+      ParentId: !Ref ClusterResourceRoot
+      PathPart: hostname
 
   ## API Method
-  TestAPIResouceAboutGet:
+  TestAPIResouceTestGet:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref RegionalAPIGatewayId
-      ResourceId: !Ref TestAPIResourceAbout
+      ResourceId: !Ref TestAPIResourceTest
       HttpMethod: GET
       AuthorizationType: NONE
       Integration:
         Type: HTTP_PROXY
         IntegrationHttpMethod: GET
         Uri: !Sub
-          - "http://$${q}{NLB}:8080/about"
+          - "http://$${q}{NLB}:8080/test"
+          - NLB: !GetAtt InternalLoadBalancer.DNSName
+        ConnectionType: VPC_LINK
+        ConnectionId: !Ref InternalLink
+
+  TestAPIResouceHostnameGet:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RegionalAPIGatewayId
+      ResourceId: !Ref TestAPIResourceHostname
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: GET
+        Uri: !Sub
+          - "http://$${q}{NLB}:8080/hostname"
           - NLB: !GetAtt InternalLoadBalancer.DNSName
         ConnectionType: VPC_LINK
         ConnectionId: !Ref InternalLink
