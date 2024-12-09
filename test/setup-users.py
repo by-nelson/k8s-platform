@@ -4,10 +4,10 @@ import os
 from botocore.config import Config
 
 # Replace with your Cognito details
-USER_POOL_ID = "us-east-1_iYEI3Xt6s" #os.environ["SHARED_USER_POOL_ID"]
-CLIENT_ID = "38our2quuv14g6jofvcam7k3qb" #os.environ["SHARED_CLIENT_ID"]
-USERNAME = "user-shared-cluster" #os.environ["SHARED_USERNAME"]
-NEW_PASSWORD = "NewSecurePassword123!" #os.environ["TEST_PASSWORD"]
+USER_POOL_ID = os.environ["SHARED_USER_POOL_ID"]
+CLIENT_ID = os.environ["SHARED_CLIENT_ID"]
+USERNAME = os.environ["SHARED_USERNAME"]
+NEW_PASSWORD = os.environ["TEST_PASSWORD"]
 
 PROFILE = os.environ["PROFILE"]
 

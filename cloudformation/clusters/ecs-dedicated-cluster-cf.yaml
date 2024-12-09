@@ -238,10 +238,12 @@ Resources:
   TestAPIResouceTestGet:
     Type: AWS::ApiGateway::Method
     Properties:
+      ApiKeyRequired: true
       RestApiId: !Ref RegionalAPIGatewayId
       ResourceId: !Ref TestAPIResourceTest
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref AuthorizerId
       Integration:
         Type: HTTP_PROXY
         IntegrationHttpMethod: GET
@@ -254,10 +256,12 @@ Resources:
   TestAPIResouceHostnameGet:
     Type: AWS::ApiGateway::Method
     Properties:
+      ApiKeyRequired: true
       RestApiId: !Ref RegionalAPIGatewayId
       ResourceId: !Ref TestAPIResourceHostname
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref AuthorizerId
       Integration:
         Type: HTTP_PROXY
         IntegrationHttpMethod: GET
@@ -285,17 +289,20 @@ Resources:
         - ApiId: !Ref RegionalAPIGatewayId
           Stage: Base
           Throttle:
+            "*/*":
+              RateLimit: 1
+              BurstLimit: 1
             # TODO: make generic
             "/dedicated-cluster/test/GET":
-              RateLimit: 1000
-              BurstLimit: 10
+              RateLimit: 10
+              BurstLimit: 20
             "/dedicated-cluster/hostname/GET":
-              RateLimit: 3000
+              RateLimit: 10
               BurstLimit: 20
       Description: Dedicated tenant usage plan
       Throttle:
-        BurstLimit: 1
-        RateLimit: 1
+        BurstLimit: 10
+        RateLimit: 20
       UsagePlanName: !Sub $${q}{ClusterName}-plan
 
   UsagePlanKey:
