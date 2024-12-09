@@ -21,5 +21,16 @@ aws s3 cp ./render "s3://platform-infrastructure-on-aws-cf-$OWNER" \
     --include "*cf.yaml" \
     --profile ${PROFILE}
 
+# JWT Layer
+mkdir python
+(cd python && pip install PyJWT -t .)
+
+zip -r pyjwt-layer.zip ./python
+
+# Upload
+aws s3 cp pyjwt-layer.zip "s3://platform-infrastructure-on-aws-cf-$OWNER" \
+    --profile ${PROFILE}
+
 # Cleanup
 rm -rf ./render 
+rm -rf ./python

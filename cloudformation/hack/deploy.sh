@@ -68,7 +68,7 @@ else
     --stack-name "$STACK_NAME" \
     --profile ${PROFILE} \
     --template-url "$TEMPLATE_URL" \
-    ${PARAMETER_OVERRIDES:+--parameters $(echo "$PARAMETER_OVERRIDES" | sed 's/ / ParameterKey=/g' | sed 's/^/ParameterKey=/')}
+    ${PARAMETER_OVERRIDES:+--parameters $(echo -e "$PARAMS")}
 fi
 
 # Wait for the stack operation to complete

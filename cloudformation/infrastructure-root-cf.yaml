@@ -236,9 +236,102 @@ Resources:
     Type: AWS::ApiGateway::RestApi
     Properties:
       Name: regional-api-to-internal-platform
+      ApiKeySourceType: AUTHORIZER
       EndpointConfiguration:
         Types: 
           - REGIONAL
+
+  # Authorizer
+  JWTLayer:
+    Type: "AWS::Lambda::LayerVersion"
+    Properties:
+      LayerName: "PyJwtLayer"
+      Content:
+        S3Bucket: "platform-infrastructure-on-aws-cf-${OWNER}"
+        S3Key: "pyjwt-layer.zip"
+      CompatibleRuntimes:
+        - "python3.9"
+      Description: "Layer containing the PyJWT library"
+ 
+  
+  LambdaTenantAuthorizer:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: "TenantAuthorizer"
+      Handler: "index.lambda_handler"
+      Role: !Sub arn:aws:iam::$${q}{AWS::AccountId}:role/$${q}{Role}
+      Runtime: "python3.9"
+      Layers:
+        - !Ref JWTLayer
+      Code:
+        ZipFile: |
+          import json
+          import jwt  # PyJWT required
+
+          def lambda_handler(event, context):
+
+              # Extract the token from the Authorization header
+              token = None
+              if 'headers' in event and event['headers']:
+                  token = event['headers'].get('Authorization', '').split(' ')[-1]
+              elif 'authorizationToken' in event:  # For API Gateway Test Console
+                  token = event['authorizationToken'].split(' ')[-1]
+              
+              if not token:
+                  raise Exception("Unauthorized: No token provided")
+
+              try:
+                  # Decode the JWT (skip signature verification for testing purposes)
+                  decoded_token = jwt.decode(token, options={"verify_signature": False})
+
+                  # Extract the tenant_id from the token
+                  tenant_id = decoded_token.get('custom:tenant_id')
+                  if not tenant_id:
+                      raise ValueError("Tenant ID not found in token")
+
+                  # Use tenant_id as the API key
+                  # TODO Example: Validate tenant_id against your database or predefined list
+                  # valid_api_keys = ["common-tenant-id"]  # Replace with your actual logic
+                  # if tenant_id not in valid_api_keys:
+                      # return generate_policy("Deny", event['methodArn'], "Unauthorized")
+
+                  # Return an Allow policy if tenant_id is valid
+                  return generate_policy("Allow", event['methodArn'], tenant_id)
+              except Exception as e:
+                  print(f"Authorization failed: {str(e)}")
+                  return generate_policy("Deny", event['methodArn'], "Unauthorized")
+
+
+          def generate_policy(effect, resource, principal_id):
+              """Generate a policy document for API Gateway."""
+              return {
+                  "principalId": principal_id,
+                  "policyDocument": {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                          {
+                              "Action": "execute-api:Invoke",
+                              "Effect": effect,
+                              "Resource": "*"
+                          }
+                      ]
+                  },
+                  "usageIdentifierKey": principal_id
+              }
+
+
+  AuthorizerBinding:
+    Type: "AWS::ApiGateway::Authorizer"
+    Properties:
+      Name: "TenantRestAuthorizer"
+      Type: "TOKEN"
+      AuthorizerCredentials: !Sub arn:aws:iam::$${q}{AWS::AccountId}:role/$${q}{Role}
+      RestApiId: !Ref RegionalAPIGateway
+      IdentitySource: "method.request.header.Authorization"
+      AuthorizerUri: 
+        Fn::Sub: 
+          - "arn:aws:apigateway:$${q}{AWS::Region}:lambda:path/2015-03-31/functions/$${q}{LambdaArn}/invocations"
+          - { LambdaArn: !GetAtt LambdaTenantAuthorizer.Arn }
 
   # Env variable replaced by the upload.sh render command
   ClusterShared:
@@ -255,6 +348,7 @@ Resources:
         Role: !Ref Role
         RegionalAPIGatewayId: !Ref RegionalAPIGateway
         RegionalAPIGatewayRootId: !GetAtt RegionalAPIGateway.RootResourceId
+        AuthorizerId: !Ref AuthorizerBinding
 
   ClusterDedicated:
     Type: AWS::CloudFormation::Stack
