@@ -364,6 +364,7 @@ Resources:
         Role: !Ref Role
         RegionalAPIGatewayId: !Ref RegionalAPIGateway
         RegionalAPIGatewayRootId: !GetAtt RegionalAPIGateway.RootResourceId
+        AuthorizerId: !Ref AuthorizerBinding
 
   # API gateway deployments
   BaseDeployment:

@@ -34,3 +34,4 @@ aws s3 cp pyjwt-layer.zip "s3://platform-infrastructure-on-aws-cf-$OWNER" \
 # Cleanup
 rm -rf ./render 
 rm -rf ./python
+rm -f pyjwt-layer.zip
